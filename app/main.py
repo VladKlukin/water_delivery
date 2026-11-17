@@ -8,7 +8,20 @@ from .database import SessionLocal
 from .models import Orders
 from .order import OrderCreate, OrderResponse
 from datetime import time,date
+from pathlib import Path
+from fastapi.responses import FileResponse
 app = FastAPI()
+
+@app.get("/orders", include_in_schema=False)
+def show_orders_page():
+    file_path = Path(__file__).parent / "static" / "orders.html"
+    return FileResponse(file_path)
+
+@app.get("/", include_in_schema=False)
+def show_order_form():
+    file_path = Path(__file__).parent / "static" / "index.html"
+    return FileResponse(file_path)
+
 
 def get_delivery_intervals(delivery_date: date) -> list[tuple[time, time]]:
     intervals = [
