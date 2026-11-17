@@ -1,9 +1,6 @@
 from datetime import date, timedelta
-
 from fastapi.testclient import TestClient
-
 from app.main import app
-
 
 client = TestClient(app)
 

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Заказ воды</title>
+</head>
+<body>
+    <h1>Заказ воды</h1>
+
+    <form id="order-form">
+        <p>
+            <label for="customer_name">ФИО:</label>
+            <input id="customer_name" required>
+        </p>
+
+        <p>
+            <label for="email">Email:</label>
+            <input id="email" type="email" required>
+        </p>
+
+        <p>
+            <label for="phone">Телефон:</label>
+            <input id="phone" type="tel" required>
+        </p>
+
+        <p>
+            <label for="delivery_address">Адрес доставки:</label>
+            <input id="delivery_address" required>
+        </p>
+
+        <p>
+            <label for="bottle_quantity">Количество бутылей:</label>
+            <input id="bottle_quantity" type="number" min="1" value="1" required>
+        </p>
+
+        <p>
+            <label for="delivery_date">Дата доставки:</label>
+            <input id="delivery_date" type="date" required>
+        </p>
+
+        <p>
+            <label for="delivery_interval">Время доставки:</label>
+            <select id="delivery_interval" required>
+                <option value="">Сначала выберите дату</option>
+            </select>
+        </p>
+
+        <button type="submit">Оформить заказ</button>
+    </form>
+
+    <p id="message"></p>
+
+    <script>
+        const form = document.getElementById("order-form");
+        const dateInput = document.getElementById("delivery_date");
+        const intervalSelect = document.getElementById("delivery_interval");
+        const message = document.getElementById("message");
+
+        dateInput.addEventListener("change", async () => {
+            intervalSelect.innerHTML = '<option value="">Загрузка...</option>';
+            message.textContent = "";
+
+            try {
+                const response = await fetch(
+                    `/delivery-slots?delivery_date=${dateInput.value}`
+                );
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || "Не удалось получить интервалы");
+                }
+
+                intervalSelect.innerHTML = '<option value="">Выберите время</option>';
+
+                for (const interval of data.intervals) {
+                    const option = document.createElement("option");
+                    option.value = `${interval.start},${interval.end}`;
+                    option.textContent = `${interval.start.slice(0, 5)} - ${interval.end.slice(0, 5)}`;
+                    intervalSelect.appendChild(option);
+                }
+            } catch (error) {
+                intervalSelect.innerHTML = '<option value="">Нет доступных интервалов</option>';
+                message.textContent = error.message;
+            }
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            message.textContent = "";
+
+            const [deliveryStart, deliveryEnd] = intervalSelect.value.split(",");
+
+            const order = {
+                customer_name: document.getElementById("customer_name").value,
+                email: document.getElementById("email").value,
+                phone: document.getElementById("phone").value,
+                delivery_address: document.getElementById("delivery_address").value,
+                bottle_quantity: Number(document.getElementById("bottle_quantity").value),
+                delivery_date: dateInput.value,
+                delivery_start: deliveryStart,
+                delivery_end: deliveryEnd,
+            };
+
+            try {
+                const response = await fetch("/order", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(order),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        typeof data.detail === "string"
+                            ? data.detail
+                            : "Проверьте введенные данные"
+                    );
+                }
+
+                message.textContent = `Заказ оформлен. Номер заказа: ${data.order_id}`;
+                form.reset();
+                intervalSelect.innerHTML = '<option value="">Сначала выберите дату</option>';
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        });
+    </script>
+</body>
+</html>

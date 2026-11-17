@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Список заказов</title>
+</head>
+<body>
+    <h1>Список заказов</h1>
+
+    <p><a href="/">Перейти к оформлению заказа</a></p>
+
+    <button id="refresh-button" type="button">Обновить список</button>
+    <p id="message"></p>
+    <div id="orders"></div>
+
+    <script>
+        const ordersContainer = document.getElementById("orders");
+        const message = document.getElementById("message");
+        const refreshButton = document.getElementById("refresh-button");
+
+        function addField(container, label, value) {
+            const paragraph = document.createElement("p");
+            paragraph.textContent = `${label}: ${value}`;
+            container.appendChild(paragraph);
+        }
+
+        async function loadOrders() {
+            message.textContent = "Загрузка...";
+            ordersContainer.replaceChildren();
+
+            try {
+                const response = await fetch("/order/list");
+
+                if (!response.ok) {
+                    throw new Error("Не удалось загрузить заказы");
+                }
+
+                const orders = await response.json();
+                message.textContent = "";
+
+                if (orders.length === 0) {
+                    message.textContent = "Заказов пока нет";
+                    return;
+                }
+
+                for (const order of orders) {
+                    const card = document.createElement("section");
+
+                    addField(card, "Номер заказа", order.id);
+                    addField(card, "ФИО", order.customer_name);
+                    addField(card, "Телефон", order.phone);
+                    addField(card, "Email", order.email);
+                    addField(card, "Адрес", order.delivery_address);
+                    addField(card, "Количество бутылей", order.bottle_quantity);
+                    addField(card, "Дата", order.delivery_date);
+                    addField(
+                        card,
+                        "Время",
+                        `${order.delivery_start} - ${order.delivery_end}`
+                    );
+                    addField(card, "Статус", order.status);
+
+                    if (order.status === "new") {
+                        const cancelButton = document.createElement("button");
+                        cancelButton.type = "button";
+                        cancelButton.textContent = "Отменить заказ";
+
+                        cancelButton.addEventListener("click", async () => {
+                            cancelButton.disabled = true;
+
+                            try {
+                                const cancelResponse = await fetch(
+                                    `/order/${order.id}/cancel`,
+                                    { method: "PATCH" }
+                                );
+
+                                if (!cancelResponse.ok) {
+                                    throw new Error("Не удалось отменить заказ");
+                                }
+
+                                await loadOrders();
+                            } catch (error) {
+                                message.textContent = error.message;
+                                cancelButton.disabled = false;
+                            }
+                        });
+
+                        card.appendChild(cancelButton);
+                    }
+
+                    card.appendChild(document.createElement("hr"));
+                    ordersContainer.appendChild(card);
+                }
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        }
+
+        refreshButton.addEventListener("click", loadOrders);
+
+        loadOrders();
+    </script>
+</body>
+</html>
