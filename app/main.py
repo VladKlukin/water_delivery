@@ -7,7 +7,7 @@ from app.order import OrderRead
 from .database import SessionLocal
 from .models import Orders
 from .order import OrderCreate, OrderResponse
-from datetime import time,date
+from datetime import datetime, time,date
 from pathlib import Path
 from fastapi.responses import FileResponse
 app = FastAPI()
@@ -35,13 +35,20 @@ def get_delivery_intervals(delivery_date: date) -> list[tuple[time, time]]:
 
     return intervals
 
+def get_available_intervals(delivery_date: date) -> list[tuple[time, time]]:
+    now = datetime.now()
+    intervals = get_delivery_intervals(delivery_date)
+    if delivery_date == now.date():
+        return [interval for interval in intervals if interval[0] > now.time()]
+    return intervals
+
 def validate_delivery_interval(order_data: OrderCreate) -> None:
     selected_interval = (
         order_data.delivery_start,
         order_data.delivery_end,
     )
 
-    if selected_interval not in get_delivery_intervals(order_data.delivery_date):
+    if selected_interval not in get_available_intervals(order_data.delivery_date):
         raise HTTPException(
             status_code=422,
             detail="Этот интервал доставки недоступен в выбранный день",
@@ -83,7 +90,7 @@ def get_slots(delivery_date: date):
             detail="Дата доставки не может быть в прошлом",
         )
 
-    intervals = get_delivery_intervals(delivery_date)
+    intervals = get_available_intervals(delivery_date)
 
     return {
         "date": delivery_date,
