@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 import uvicorn
-
+from sqlalchemy import text
+from .models import Orders
+from .database import SessionLocal
 app = FastAPI()
-
 
 
 
